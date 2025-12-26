@@ -14,6 +14,7 @@ from sqlalchemy.exc import NoSuchTableError
 
 from app.core.settings import get_settings
 from app.db.clients import DbClient, get_db_clients
+from app.services.notify_email import ConflictEmail, notify_conflict_created
 
 DbName = Literal["mysql", "postgres", "oracle"]
 
@@ -54,6 +55,55 @@ def _mark_processed_sql(db_name: DbName) -> str:
     if db_name == "postgres":
         return "UPDATE change_log SET processed = TRUE WHERE id = :id"
     return "UPDATE change_log SET processed = 1 WHERE id = :id"
+
+
+def _mark_latest_side_effect_change_log_processed_sql(db_name: DbName) -> str:
+    """
+    When the backend writes to a *target* DB (as part of sync / conflict resolution),
+    DB triggers may also insert into that DB's change_log, which can create sync loops.
+
+    This helper marks the most recent matching change_log row as processed within the same transaction.
+    """
+    if db_name == "mysql":
+        return (
+            "UPDATE change_log SET processed = 1 "
+            "WHERE processed = 0 AND table_name = :table_name AND pk_value = :pk_value AND op = :op "
+            "ORDER BY id DESC LIMIT 1"
+        )
+    if db_name == "postgres":
+        return (
+            "UPDATE change_log SET processed = TRUE "
+            "WHERE id = ("
+            "  SELECT id FROM change_log "
+            "  WHERE processed = FALSE AND table_name = :table_name AND pk_value = :pk_value AND op = :op "
+            "  ORDER BY id DESC LIMIT 1"
+            ")"
+        )
+    if db_name == "oracle":
+        return (
+            "UPDATE change_log SET processed = 1 "
+            "WHERE id = ("
+            "  SELECT id FROM ("
+            "    SELECT id FROM change_log "
+            "    WHERE processed = 0 AND table_name = :table_name AND pk_value = :pk_value AND op = :op "
+            "    ORDER BY id DESC"
+            "  ) WHERE ROWNUM = 1"
+            ")"
+        )
+    raise ValueError(f"Unsupported db: {db_name}")
+
+
+def _mark_latest_side_effect_change_log_processed(conn, target_db: DbName, *, table_name: str, pk_value: str, op: str) -> None:
+    """
+    Best-effort. Never raises.
+    """
+    try:
+        conn.execute(
+            text(_mark_latest_side_effect_change_log_processed_sql(target_db)),
+            {"table_name": table_name, "pk_value": str(pk_value), "op": str(op)},
+        )
+    except Exception:  # noqa: BLE001
+        return
 
 
 def _reflect_table(client: DbClient, table_name: str, schema: str | None = None) -> Table:
@@ -113,20 +163,37 @@ def _upsert_by_id(target: DbClient, target_db: DbName, table_name: str, row: dic
             payload[dst_name] = v
 
     with target.engine.begin() as conn:
-        try:
-            conn.execute(insert(dst_table), payload)
-        except IntegrityError as exc:
-            # Duplicate PK or unique conflict: fallback to update-by-id.
-            update_payload = {k: v for k, v in payload.items() if k.lower() != "id"}
-            if update_payload:
-                id_key = dst_cols_by_lower.get("id")
-                rid = _coerce_id(id_col, payload.get(id_key) if id_key else None)
-                res = conn.execute(update(dst_table).where(id_col == rid).values(update_payload))
-                # If we couldn't update an existing row, treat it as a failed sync.
-                if res.rowcount is not None and int(res.rowcount) <= 0:
-                    raise exc
+        id_key = dst_cols_by_lower.get("id")
+        rid = _coerce_id(id_col, payload.get(id_key) if id_key else None)
+        if rid is None:
+            raise ValueError("Missing id value for upsert")
+
+        update_payload = {k: v for k, v in payload.items() if k.lower() != "id"}
+
+        # Prefer UPDATE-first:
+        # - Avoids PostgreSQL transaction-abort behavior after a failed INSERT (IntegrityError).
+        # - Works consistently across MySQL/Postgres/Oracle.
+        updated = False
+        if update_payload:
+            res = conn.execute(update(dst_table).where(id_col == rid).values(update_payload))
+            # rowcount semantics differ by DB:
+            # - Postgres: rows matched (good)
+            # - MySQL: rows changed (0 can mean "matched but unchanged")
+            # - Oracle: sometimes rowcount can be -1/None
+            if res.rowcount is not None and int(res.rowcount) > 0:
+                updated = True
             else:
-                raise exc
+                # Disambiguate "row exists but unchanged" vs "row missing".
+                exists = conn.execute(select(id_col).where(id_col == rid).limit(1)).first()
+                updated = exists is not None
+
+        if updated:
+            _mark_latest_side_effect_change_log_processed(conn, target_db, table_name=table_name, pk_value=str(rid), op="U")
+            return
+
+        # Row not present -> INSERT.
+        conn.execute(insert(dst_table), payload)
+        _mark_latest_side_effect_change_log_processed(conn, target_db, table_name=table_name, pk_value=str(rid), op="I")
 
 
 def _delete_by_id(target: DbClient, target_db: DbName, table_name: str, row_id: str) -> None:
@@ -138,6 +205,8 @@ def _delete_by_id(target: DbClient, target_db: DbName, table_name: str, row_id: 
     rid = _coerce_id(id_col, row_id)
     with target.engine.begin() as conn:
         conn.execute(delete(dst_table).where(id_col == rid))
+        # Prevent sync loops: mark the trigger-generated change_log row as processed.
+        _mark_latest_side_effect_change_log_processed(conn, target_db, table_name=table_name, pk_value=str(rid), op="D")
 
 
 def _coerce_id(col, value: Any) -> Any:
@@ -350,7 +419,9 @@ def _record_conflict(
     except Exception:  # noqa: BLE001
         return
 
-    reason_text = (reason or "")[:900]
+    # `conflicts.reason` is VARCHAR(255) across our init scripts, so keep this short.
+    # Full error details are stored in `sync_applied.error_text`.
+    reason_text = (reason or "")[:250]
     with source.engine.begin() as conn:
         # De-dup: if same open conflict already exists, don't create another.
         existing = (
@@ -378,6 +449,45 @@ def _record_conflict(
                 "resolution_db": target_db,
             },
         )
+
+        # Fetch inserted row info for notification link.
+        row = (
+            conn.execute(
+                select(conflicts.c.id, conflicts.c.detected_at)
+                .where(conflicts.c.status == "open")
+                .where(conflicts.c.table_name == table_name)
+                .where(conflicts.c.pk_value == pk_value)
+                .where(conflicts.c.source_db == source_db)
+                .where(conflicts.c.resolution_db == target_db)
+                .order_by(conflicts.c.id.desc())
+                .limit(1)
+            )
+            .first()
+        )
+        conflict_id = int(row[0]) if row and row[0] is not None else None
+        detected_at = None
+        if row and row[1] is not None:
+            try:
+                detected_at = str(row[1])
+            except Exception:  # noqa: BLE001
+                detected_at = None
+
+    # Notify outside transaction (best-effort).
+    try:
+        notify_conflict_created(
+            ConflictEmail(
+                store_db=str(source_db),
+                conflict_id=conflict_id,
+                table_name=table_name,
+                pk_value=pk_value,
+                source_db=str(source_db),
+                target_db=str(target_db),
+                reason=reason_text,
+                detected_at=detected_at,
+            )
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _update_daily_stats(

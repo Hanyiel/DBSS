@@ -119,6 +119,16 @@ export async function migrateDatabase(req: {
   };
 }
 
+export async function runBackup(body?: { skip_mysql?: boolean; skip_postgres?: boolean; skip_oracle?: boolean }) {
+  const res = await api.post("/migration/backup", body ?? {}, { timeout: 15 * 60 * 1000 });
+  return res.data as {
+    ok: boolean;
+    out_dir: string;
+    files: Array<{ name: string; bytes: number }>;
+    stdout_tail?: string;
+  };
+}
+
 export async function fetchConflicts(params?: { status?: "open" | "resolved" | "all"; source_db?: string; limit?: number }) {
   const res = await api.get("/conflicts", { params });
   return res.data as { conflicts: Array<Record<string, unknown>> };
@@ -127,10 +137,43 @@ export async function fetchConflicts(params?: { status?: "open" | "resolved" | "
 export async function resolveConflict(
   sourceDb: string,
   conflictId: number,
-  body: { action: "mark_resolved" | "retry_keep_source"; op?: "I" | "U" | "D"; mark_resolved_on_success?: boolean },
+  body: {
+    action: "mark_resolved" | "retry_keep_source" | "sync_from_db" | "auto_latest";
+    op?: "I" | "U" | "D";
+    winner_db?: "mysql" | "postgres" | "oracle";
+    force?: boolean;
+    mark_resolved_on_success?: boolean;
+    note?: string;
+  },
 ) {
   const res = await api.post(`/conflicts/${sourceDb}/${conflictId}/resolve`, body);
-  return res.data as { ok: boolean; action: string; apply?: unknown };
+  return res.data as { ok: boolean; action: string; apply?: unknown; sync?: unknown; winner_db?: string };
+}
+
+export async function createDemoConflict(body?: {
+  source_db?: "mysql" | "postgres" | "oracle";
+  target_db?: "mysql" | "postgres" | "oracle";
+  table_name?: "users";
+  run_sync?: boolean;
+  limit?: number;
+}) {
+  const res = await api.post("/conflicts/demo/create", body ?? {});
+  return res.data as Record<string, unknown>;
+}
+
+export async function fetchConflictDetail(storeDb: "mysql" | "postgres" | "oracle", conflictId: number) {
+  const res = await api.get(`/conflicts/${storeDb}/${conflictId}`);
+  return res.data as {
+    store_db: string;
+    conflict: Record<string, unknown>;
+    rows_by_db?: Record<string, unknown> | null;
+    source_row?: Record<string, unknown> | null;
+    target_row?: Record<string, unknown> | null;
+    target_conflict_row?: Record<string, unknown> | null;
+    source_row_error?: string;
+    target_row_error?: string;
+    target_conflict_row_error?: string;
+  };
 }
 
 export async function fetchMonitorOverview() {
@@ -151,4 +194,61 @@ export async function fetchMonitorOverview() {
 export async function fetchMonitorDaily(days = 14) {
   const res = await api.get("/monitor/daily", { params: { days } });
   return res.data as Record<string, { ok: boolean; rows?: Array<Record<string, unknown>>; error?: string }>;
+}
+
+export async function fetchConflictsReport(days = 14) {
+  const res = await api.get("/monitor/conflicts/report", { params: { days } });
+  return res.data as {
+    generated_at: string;
+    days: number;
+    start_date: string;
+    end_date: string;
+    by_db: Record<
+      string,
+      | { ok: false; error: string }
+      | {
+          ok: true;
+          totals: { total: number; open: number; resolved: number; created_range: number; resolved_range: number };
+          created_daily: Array<{ date: string; count: number }>;
+          resolved_daily: Array<{ date: string; count: number }>;
+          top_open_tables: Array<{ table_name: string; count: number }>;
+          top_open_reasons: Array<{ reason: string; count: number }>;
+        }
+    >;
+  };
+}
+
+export async function fetchQueryTemplates() {
+  const res = await api.get("/queries/templates");
+  return res.data as {
+    templates: Array<{
+      id: string;
+      title: string;
+      description: string;
+      sql_by_db: Record<string, string>;
+      optimization_notes: string[];
+      params?: Array<{ name: string; kind: "int" | "str"; default?: number | string | null; description?: string }>;
+    }>;
+  };
+}
+
+export async function runQueryTemplate(body: {
+  db: "mysql" | "postgres" | "oracle";
+  template_id: string;
+  since_minutes: number;
+  limit: number;
+  with_explain: boolean;
+  params?: Record<string, unknown>;
+}) {
+  const res = await api.post("/queries/run", body);
+  return res.data as {
+    db: string;
+    template_id: string;
+    title: string;
+    sql: string;
+    params: Record<string, unknown>;
+    optimization_notes: string[];
+    rows: Array<Record<string, unknown>>;
+    explain?: { ok: boolean; rows?: Array<Record<string, unknown>>; lines?: string[]; error?: string };
+  };
 }

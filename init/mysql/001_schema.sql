@@ -218,6 +218,7 @@ ALTER TABLE friendships ADD INDEX idx_friendships_category_id (category_id);
 ALTER TABLE friend_requests ADD INDEX idx_friend_requests_from_user (from_user_id);
 ALTER TABLE friend_requests ADD INDEX idx_friend_requests_to_user (to_user_id);
 ALTER TABLE friend_requests ADD INDEX idx_friend_requests_status (status);
+ALTER TABLE friend_requests ADD INDEX idx_friend_requests_status_to_user (status, to_user_id);
 
 ALTER TABLE rooms ADD INDEX idx_rooms_host_id (host_id);
 ALTER TABLE rooms ADD INDEX idx_rooms_scheduled_start (scheduled_start);
@@ -227,6 +228,7 @@ ALTER TABLE room_participants ADD INDEX idx_room_participants_user_id (user_id);
 
 ALTER TABLE messages ADD INDEX idx_messages_room_id (room_id);
 ALTER TABLE messages ADD INDEX idx_messages_created_at (created_at);
+ALTER TABLE messages ADD INDEX idx_messages_user_created (user_id, created_at);
 
 -- 初始化数据
 INSERT IGNORE INTO friend_categories (name, is_system, sort_order) VALUES 

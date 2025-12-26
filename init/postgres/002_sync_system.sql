@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS conflicts (
   reason TEXT,
   source_db TEXT,
   resolution_db TEXT,
+  resolution_method TEXT,
+  resolution_note TEXT,
   resolved_by TEXT,
   resolved_at TIMESTAMPTZ
 );
@@ -48,3 +50,17 @@ CREATE TABLE IF NOT EXISTS sync_stats_daily (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Audit log (for compliance & conflict explanation)
+CREATE TABLE IF NOT EXISTS audit_log (
+  id BIGSERIAL PRIMARY KEY,
+  source_db TEXT NOT NULL,
+  table_name TEXT NOT NULL,
+  pk_value TEXT NOT NULL,
+  op CHAR(1) NOT NULL CHECK (op IN ('I','U','D')),
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  changed_by TEXT,
+  old_row JSONB,
+  new_row JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_table_pk ON audit_log (table_name, pk_value, id);

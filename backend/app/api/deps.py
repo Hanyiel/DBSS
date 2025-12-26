@@ -4,7 +4,14 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+try:
+    from jose import JWTError, jwt
+except ModuleNotFoundError as exc:  # pragma: no cover
+    raise RuntimeError(
+        "Missing dependency 'python-jose'. "
+        "Install backend dependencies in your active environment: "
+        "`python -m pip install -r backend/requirements.txt` (or from `backend/`: `python -m pip install -r requirements.txt`)."
+    ) from exc
 
 from app.core.settings import Settings, get_settings
 
@@ -26,4 +33,3 @@ def require_admin(payload: dict[str, Any] = Depends(get_current_token_payload)) 
     if payload.get("role") != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin required")
     return payload
-

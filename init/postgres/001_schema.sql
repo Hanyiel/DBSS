@@ -229,6 +229,7 @@ CREATE INDEX IF NOT EXISTS idx_friendships_category_id ON friendships(category_i
 CREATE INDEX IF NOT EXISTS idx_friend_requests_from_user ON friend_requests(from_user_id);
 CREATE INDEX IF NOT EXISTS idx_friend_requests_to_user ON friend_requests(to_user_id);
 CREATE INDEX IF NOT EXISTS idx_friend_requests_status ON friend_requests(status);
+CREATE INDEX IF NOT EXISTS idx_friend_requests_status_to_user ON friend_requests(status, to_user_id);
 
 CREATE INDEX IF NOT EXISTS idx_rooms_host_id ON rooms(host_id);
 CREATE INDEX IF NOT EXISTS idx_rooms_scheduled_start ON rooms(scheduled_start);
@@ -238,6 +239,7 @@ CREATE INDEX IF NOT EXISTS idx_room_participants_user_id ON room_participants(us
 
 CREATE INDEX IF NOT EXISTS idx_messages_room_id ON messages(room_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_user_created ON messages(user_id, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_room_created ON messages(room_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_user_room ON messages(user_id, room_id);

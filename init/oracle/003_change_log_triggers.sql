@@ -21,6 +21,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'users', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'users',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -39,6 +49,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'friend_categories', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'friend_categories',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -57,6 +77,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'friendships', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'friendships',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -75,6 +105,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'friend_requests', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'friend_requests',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -93,6 +133,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'rooms', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'rooms',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -111,6 +161,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'permission_roles', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'permission_roles',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -129,6 +189,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'meeting_permissions', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'meeting_permissions',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -147,6 +217,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'room_participants', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'room_participants',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -165,6 +245,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'messages', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'messages',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -183,6 +273,16 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'waiting_room', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'waiting_room',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /
 
@@ -201,5 +301,15 @@ BEGIN
     v_op := 'D'; v_pk := TO_CHAR(:OLD.id);
   END IF;
   INSERT INTO change_log (source_db, table_name, pk_value, op) VALUES ('oracle', 'meeting_recordings', v_pk, v_op);
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES (
+    'oracle',
+    'meeting_recordings',
+    v_pk,
+    v_op,
+    SYS_CONTEXT('USERENV','SESSION_USER'),
+    CASE WHEN v_op = 'I' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END,
+    CASE WHEN v_op = 'D' THEN NULL ELSE JSON_OBJECT('id' VALUE v_pk RETURNING CLOB) END
+  );
 END;
 /

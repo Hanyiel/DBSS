@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { deleteDbRow, fetchDbRows, fetchDbTableInfo, fetchDbTables, insertDbRow } from "../api/client";
+import JsonTable from "../components/JsonTable";
 
 type DbName = "mysql" | "postgres" | "oracle";
 type ViewMode = "table" | "json";
@@ -264,9 +265,9 @@ export default function DbOpsPage() {
             </table>
           </div>
         ) : (
-          <pre className="pre" style={{ marginTop: 10 }}>
-            {JSON.stringify(rows, null, 2)}
-          </pre>
+          <div style={{ marginTop: 10 }}>
+            <JsonTable value={rows} />
+          </div>
         )}
       </div>
 
@@ -310,9 +311,9 @@ export default function DbOpsPage() {
         <div className="card">
           <h2>同步结果</h2>
           <div className="muted">插入/删除后会自动触发一次从当前库到另外两库的同步。</div>
-          <pre className="pre" style={{ marginTop: 10 }}>
-            {JSON.stringify(lastSync, null, 2)}
-          </pre>
+          <div style={{ marginTop: 10 }}>
+            <JsonTable value={lastSync} />
+          </div>
         </div>
       ) : null}
     </div>

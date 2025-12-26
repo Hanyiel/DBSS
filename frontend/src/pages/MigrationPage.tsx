@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { fetchTables, migrateDatabase, migrateTable } from "../api/client";
+import { fetchTables, migrateDatabase, migrateTable, runBackup } from "../api/client";
+import JsonTable from "../components/JsonTable";
 
 type Mode = "table" | "database";
 
@@ -12,7 +13,11 @@ export default function MigrationPage() {
   const [tableName, setTableName] = useState("users");
   const [truncateTarget, setTruncateTarget] = useState(true);
   const [batchSize, setBatchSize] = useState(500);
-  const [output, setOutput] = useState<string>("");
+  const [output, setOutput] = useState<unknown>(null);
+
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupResult, setBackupResult] = useState<Awaited<ReturnType<typeof runBackup>> | null>(null);
+
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,7 +41,8 @@ export default function MigrationPage() {
 
   async function onRun() {
     setError(null);
-    setOutput("");
+    setOutput(null);
+    setBackupResult(null);
     try {
       if (mode === "table") {
         const res = await migrateTable({
@@ -46,7 +52,7 @@ export default function MigrationPage() {
           truncate_target: truncateTarget,
           batch_size: batchSize,
         });
-        setOutput(JSON.stringify(res, null, 2));
+        setOutput(res);
       } else {
         const res = await migrateDatabase({
           source_db: sourceDb,
@@ -55,10 +61,25 @@ export default function MigrationPage() {
           truncate_target: truncateTarget,
           batch_size: batchSize,
         });
-        setOutput(JSON.stringify(res, null, 2));
+        setOutput(res);
       }
     } catch (e) {
       setError(String(e));
+    }
+  }
+
+  async function onBackup() {
+    setError(null);
+    setOutput(null);
+    setBackupResult(null);
+    setBackupBusy(true);
+    try {
+      const res = await runBackup({});
+      setBackupResult(res);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBackupBusy(false);
     }
   }
 
@@ -66,11 +87,13 @@ export default function MigrationPage() {
     <div className="stack">
       <div className="card">
         <h2>迁移</h2>
-        <div className="muted">
-          需要先在“登录”页获取管理员 token（接口使用 JWT + RBAC）。此页面用于课程演示：表迁移/整库迁移 + 行数统计。
-        </div>
+        <div className="muted">需要先在“登录”页获取管理员 token（接口使用 JWT + RBAC）。</div>
 
-        {error ? <div className="error" style={{ marginTop: 10 }}>{error}</div> : null}
+        {error ? (
+          <div className="error" style={{ marginTop: 10 }}>
+            {error}
+          </div>
+        ) : null}
 
         <div className="form" style={{ marginTop: 12 }}>
           <label>
@@ -116,13 +139,7 @@ export default function MigrationPage() {
           <div className="row">
             <label>
               <span>批大小</span>
-              <input
-                type="number"
-                value={batchSize}
-                min={1}
-                max={5000}
-                onChange={(e) => setBatchSize(Number(e.target.value))}
-              />
+              <input type="number" value={batchSize} min={1} max={5000} onChange={(e) => setBatchSize(Number(e.target.value))} />
             </label>
             <label className="checkbox">
               <input checked={truncateTarget} onChange={(e) => setTruncateTarget(e.target.checked)} type="checkbox" />
@@ -136,12 +153,54 @@ export default function MigrationPage() {
         </div>
       </div>
 
+      <div className="card">
+        <h2>备份</h2>
+        <div className="muted">在网页上触发三库备份（调用 `deploy/backup.ps1`），并显示备份目录。</div>
+        <div className="row" style={{ marginTop: 12 }}>
+          <button onClick={onBackup} disabled={backupBusy}>
+            {backupBusy ? "备份中..." : "一键备份（MySQL+Postgres+Oracle）"}
+          </button>
+        </div>
+
+        {backupResult?.ok ? (
+          <div style={{ marginTop: 12 }}>
+            <div className="muted">备份目录</div>
+            <div className="pre" style={{ marginTop: 6 }}>
+              {backupResult.out_dir}
+            </div>
+
+            <div className="muted" style={{ marginTop: 10 }}>
+              文件列表
+            </div>
+            <div className="table-wrap" style={{ marginTop: 6 }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>name</th>
+                    <th>bytes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {backupResult.files.map((f) => (
+                    <tr key={f.name}>
+                      <td>{f.name}</td>
+                      <td>{f.bytes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
       {output ? (
         <div className="card">
           <h2>结果</h2>
-          <pre className="pre">{output}</pre>
+          <JsonTable value={output} />
         </div>
       ) : null}
     </div>
   );
 }
+

@@ -20,8 +20,13 @@ class SyncRunOnceRequest(BaseModel):
 @router.get("/config")
 def sync_config(settings: Settings = Depends(get_settings), _admin: dict = Depends(require_admin)):
     return {
+        "sync_enabled": settings.sync_enabled,
+        "sync_mode": settings.sync_mode,
         "sync_source_db": settings.sync_source_db,
         "sync_poll_seconds": settings.sync_poll_seconds,
+        "sync_interval_seconds": settings.sync_interval_seconds,
+        "sync_batch_limit": settings.sync_batch_limit,
+        "sync_run_on_startup": settings.sync_run_on_startup,
     }
 
 
@@ -33,7 +38,7 @@ def sync_run_once(req: SyncRunOnceRequest, _admin: dict = Depends(require_admin)
 @router.get("/precheck")
 def sync_precheck(settings: Settings = Depends(get_settings), _admin: dict = Depends(require_admin)):
     clients = get_db_clients()
-    needed = ["change_log", "sync_applied", "conflicts", "sync_stats_daily"]
+    needed = ["change_log", "sync_applied", "conflicts", "sync_stats_daily", "audit_log"]
     out = {}
     for name, client in clients.items():
         try:

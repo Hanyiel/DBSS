@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS conflicts (
   reason VARCHAR(255),
   source_db VARCHAR(20),
   resolution_db VARCHAR(20),
+  resolution_method VARCHAR(20),
+  resolution_note VARCHAR(255),
   resolved_by VARCHAR(50),
   resolved_at TIMESTAMP NULL
 ) ENGINE=InnoDB;
@@ -49,3 +51,17 @@ CREATE TABLE IF NOT EXISTS sync_stats_daily (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+-- Audit log (for compliance & conflict explanation)
+CREATE TABLE IF NOT EXISTS audit_log (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  source_db VARCHAR(20) NOT NULL,
+  table_name VARCHAR(64) NOT NULL,
+  pk_value VARCHAR(128) NOT NULL,
+  op ENUM('I','U','D') NOT NULL,
+  changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  changed_by VARCHAR(128),
+  old_row JSON NULL,
+  new_row JSON NULL
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_audit_log_table_pk ON audit_log (table_name, pk_value, id);

@@ -7,20 +7,31 @@ RETURNS TRIGGER AS $$
 DECLARE
   v_op CHAR(1);
   v_pk TEXT;
+  v_old JSONB;
+  v_new JSONB;
 BEGIN
   IF TG_OP = 'INSERT' THEN
     v_op := 'I';
     v_pk := NEW.id::text;
+    v_old := NULL;
+    v_new := to_jsonb(NEW);
   ELSIF TG_OP = 'UPDATE' THEN
     v_op := 'U';
     v_pk := NEW.id::text;
+    v_old := to_jsonb(OLD);
+    v_new := to_jsonb(NEW);
   ELSE
     v_op := 'D';
     v_pk := OLD.id::text;
+    v_old := to_jsonb(OLD);
+    v_new := NULL;
   END IF;
 
   INSERT INTO change_log (source_db, table_name, pk_value, op)
   VALUES ('postgres', TG_TABLE_NAME, v_pk, v_op);
+
+  INSERT INTO audit_log (source_db, table_name, pk_value, op, changed_by, old_row, new_row)
+  VALUES ('postgres', TG_TABLE_NAME, v_pk, v_op, current_user, v_old, v_new);
 
   RETURN NULL;
 END;
@@ -52,4 +63,3 @@ BEGIN
     );
   END LOOP;
 END $$;
-

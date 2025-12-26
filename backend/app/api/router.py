@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import auth, conflicts, dbops, health, migration, monitor, schema, sync
+from app.api.routes import auth, conflicts, dbops, health, migration, monitor, notify, queries, reconcile, schema, sync
 
 api_router = APIRouter()
 
@@ -12,3 +12,6 @@ api_router.include_router(dbops.router, prefix="/db", tags=["db"])
 api_router.include_router(sync.router, prefix="/sync", tags=["sync"])
 api_router.include_router(conflicts.router, prefix="/conflicts", tags=["conflicts"])
 api_router.include_router(monitor.router, prefix="/monitor", tags=["monitor"])
+api_router.include_router(reconcile.router, prefix="/reconcile", tags=["reconcile"])
+api_router.include_router(queries.router, prefix="/queries", tags=["queries"])
+api_router.include_router(notify.router, prefix="/notify", tags=["notify"])

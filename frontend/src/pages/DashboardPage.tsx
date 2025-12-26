@@ -43,15 +43,6 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
-
-      <div className="card">
-        <h2>下一步</h2>
-        <ol className="muted">
-          <li>先把三库都启动并初始化表结构（deploy/）。</li>
-          <li>配置 backend/.env 后启动后端，再打开本页面验证 /health。</li>
-          <li>后续逐步完善：迁移、实时/定时同步、冲突闭环、报表。</li>
-        </ol>
-      </div>
     </div>
   );
 }
