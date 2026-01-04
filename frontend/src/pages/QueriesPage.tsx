@@ -118,11 +118,7 @@ export default function QueriesPage() {
   return (
     <div className="stack">
       <div className="card">
-        <h2>高级查询展示</h2>
-        <div className="muted">
-          模板来自业务场景（`que_plan.docx`），包含多表 JOIN、嵌套子查询、聚合统计；可选 EXPLAIN 用于展示优化点。
-        </div>
-
+        <h2>查询展示</h2>
         {error ? (
           <div className="error" style={{ marginTop: 10 }}>
             {error}
@@ -153,26 +149,9 @@ export default function QueriesPage() {
           </div>
 
           <div className="row">
-            <label style={{ minWidth: 180 }}>
-              <span>时间窗口（分钟）</span>
-              <input
-                type="number"
-                min={1}
-                max={60 * 24 * 365}
-                value={sinceMinutes}
-                onChange={(e) => setSinceMinutes(Number(e.target.value))}
-                disabled={busy}
-              />
-            </label>
-
             <label style={{ minWidth: 140 }}>
               <span>返回条数</span>
               <input type="number" min={1} max={200} value={limit} onChange={(e) => setLimit(Number(e.target.value))} disabled={busy} />
-            </label>
-
-            <label className="checkbox" style={{ marginTop: 22 }}>
-              <input type="checkbox" checked={withExplain} onChange={(e) => setWithExplain(e.target.checked)} disabled={busy} />
-              <span>带 EXPLAIN</span>
             </label>
 
             <button onClick={run} disabled={busy || !templateId}>
@@ -266,28 +245,6 @@ export default function QueriesPage() {
         )}
       </div>
 
-      <div className="card">
-        <h2>EXPLAIN / 执行计划</h2>
-        {result?.explain ? (
-          result.explain.ok ? (
-            result.explain.lines ? (
-              <pre className="pre" style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>
-                {(result.explain.lines ?? []).join("\n")}
-              </pre>
-            ) : (
-              <div style={{ marginTop: 10 }}>
-                <JsonTable value={result.explain.rows ?? []} />
-              </div>
-            )
-          ) : (
-            <div className="error" style={{ marginTop: 10 }}>
-              {result.explain.error ?? "explain failed"}
-            </div>
-          )
-        ) : (
-          <div className="muted">（未请求 EXPLAIN 或尚未运行）</div>
-        )}
-      </div>
     </div>
   );
 }

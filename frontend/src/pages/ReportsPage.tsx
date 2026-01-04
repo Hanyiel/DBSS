@@ -187,8 +187,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="card">
-        <h2>冲突趋势（真实数据）</h2>
-        <div className="muted">从各库 `conflicts` 表按天聚合（不依赖 `sync_stats_daily`）。</div>
+        <h2>冲突趋势</h2>
         <div style={{ marginTop: 10 }}>
           <TimeSeriesChart series={conflictChart.series} height={260} />
         </div>
@@ -196,8 +195,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="card">
-        <h2>同步趋势（图形）</h2>
-        <div className="muted">每条折线代表一个数据库。</div>
+        <h2>同步趋势</h2>
         <div style={{ marginTop: 10 }}>
           <TimeSeriesChart series={syncChart.series} height={280} />
         </div>

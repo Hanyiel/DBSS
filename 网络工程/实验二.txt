@@ -1,0 +1,16 @@
+ip a 
+DHCP 配置：cat /etc/dhcp/dhcpd.conf
+检查服务状态：systemctl status isc-dhcp-server
+
+postfix 配置： cat /etc/postfix/main.cf
+postfix服务状态：systemctl status postfix
+发送邮件：echo "Hello OK" | mail -s "bucuo" lhy@csuuu.top
+
+DNS服务配置：cat /etc/bind/db.csuuu.top
+状态：systemctl status bind9
+
+VPN实验配置：cat /etc/openvpn/server.conf
+状态：systemctl status openvpn@server
+sudo openvpn --config ~/client1.ovpn
+
+防火墙：sudo ufw status

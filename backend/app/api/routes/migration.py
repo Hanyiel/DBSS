@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import NoSuchTableError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from app.api.deps import require_admin
 from app.db.schemas import BUSINESS_TABLES
@@ -66,6 +67,8 @@ def migrate_one_table(req: TableMigrationRequest, _admin: dict = Depends(require
             truncate_target=req.truncate_target,
             batch_size=req.batch_size,
         )
+    except IntegrityError as exc:
+        raise HTTPException(status_code=409, detail=f"Migration failed: {exc.orig}") from exc
     except NoSuchTableError as exc:
         raise HTTPException(
             status_code=400,
@@ -75,6 +78,10 @@ def migrate_one_table(req: TableMigrationRequest, _admin: dict = Depends(require
                 " you may need to set ORACLE_SCHEMA in backend/.env or rebuild containers."
             ),
         ) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=500, detail=f"Migration failed: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Migration failed: {exc}") from exc
 
 
 @router.post("/database")
@@ -92,6 +99,8 @@ def migrate_whole_database(req: DatabaseMigrationRequest, _admin: dict = Depends
             truncate_target=req.truncate_target,
             batch_size=req.batch_size,
         )
+    except IntegrityError as exc:
+        raise HTTPException(status_code=409, detail=f"Migration failed: {exc.orig}") from exc
     except NoSuchTableError as exc:
         raise HTTPException(
             status_code=400,
@@ -101,6 +110,10 @@ def migrate_whole_database(req: DatabaseMigrationRequest, _admin: dict = Depends
                 " you may need to set ORACLE_SCHEMA in backend/.env or rebuild containers."
             ),
         ) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=500, detail=f"Migration failed: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Migration failed: {exc}") from exc
 
 
 @router.post("/backup")

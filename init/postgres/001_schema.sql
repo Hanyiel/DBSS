@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS meeting_permissions (
   CONSTRAINT fk_mp_meeting FOREIGN KEY (meeting_id) REFERENCES rooms(id) ON DELETE CASCADE,
   CONSTRAINT fk_mp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_mp_role FOREIGN KEY (role_id) REFERENCES permission_roles(id),
-  CONSTRAINT fk_mp_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(id),
+  CONSTRAINT fk_mp_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL,
   CONSTRAINT unique_meeting_user UNIQUE (meeting_id, user_id)
 );
 

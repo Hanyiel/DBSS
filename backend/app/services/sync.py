@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass
 from typing import Any, Iterable, Literal
@@ -139,12 +140,13 @@ def _schema_for(db_name: DbName) -> str | None:
 def _select_row_by_id(source: DbClient, source_db: DbName, table_name: str, row_id: str) -> dict[str, Any] | None:
     physical, schema = _resolve_physical_table_name(source, source_db, table_name)
     src_table = _reflect_table(source, physical, schema=schema)
-    id_col = _find_column_ci(src_table, "id")
+    src_from = src_table.alias() if source_db == "oracle" else src_table
+    id_col = _find_column_ci(src_from, "id")
     if id_col is None:
         raise ValueError("Only tables with 'id' column are supported")
     rid = _coerce_id(id_col, row_id)
     with source.engine.connect() as conn:
-        row = conn.execute(select(src_table).where(id_col == rid)).mappings().first()
+        row = conn.execute(select(src_from).where(id_col == rid)).mappings().first()
     return None if row is None else dict(row)
 
 
@@ -160,7 +162,10 @@ def _upsert_by_id(target: DbClient, target_db: DbName, table_name: str, row: dic
     for k, v in row.items():
         dst_name = dst_cols_by_lower.get(str(k).lower())
         if dst_name:
-            payload[dst_name] = v
+            if target_db == "oracle" and isinstance(v, (dict, list)):
+                payload[dst_name] = json.dumps(v, ensure_ascii=False, default=str)
+            else:
+                payload[dst_name] = v
 
     with target.engine.begin() as conn:
         id_key = dst_cols_by_lower.get("id")

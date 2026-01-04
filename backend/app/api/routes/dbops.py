@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -172,12 +173,13 @@ def list_rows(
 ):
     _assert_business_table(table_name)
     table = _get_table(db_name, table_name)
+    query_from = table.alias() if db_name == "oracle" else table
 
     clients = get_db_clients()
     client = clients[db_name]
     try:
         with client.engine.connect() as conn:
-            rows = conn.execute(select(table).offset(offset).limit(limit)).mappings().all()
+            rows = conn.execute(select(query_from).offset(offset).limit(limit)).mappings().all()
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail=f"{db_name} unavailable: {exc}") from exc
     return {"db": db_name, "table": table_name, "limit": limit, "offset": offset, "rows": [dict(r) for r in rows]}
@@ -194,7 +196,10 @@ def insert_row(db_name: DbName, table_name: str, req: InsertRowRequest, _admin: 
     for k, v in values.items():
         col_name = cols_by_lower.get(str(k).lower())
         if col_name:
-            payload[col_name] = v
+            if db_name == "oracle" and isinstance(v, (dict, list)):
+                payload[col_name] = json.dumps(v, ensure_ascii=False, default=str)
+            else:
+                payload[col_name] = v
     if not payload:
         raise HTTPException(status_code=400, detail="No valid columns in payload")
 
@@ -253,8 +258,14 @@ def delete_row(db_name: DbName, table_name: str, row_id: str, _admin: dict = Dep
 
     clients = get_db_clients()
     client = clients[db_name]
-    with client.engine.begin() as conn:
-        res = conn.execute(delete(table).where(id_col == row_id_value))
+    try:
+        with client.engine.begin() as conn:
+            res = conn.execute(delete(table).where(id_col == row_id_value))
+    except IntegrityError as exc:
+        # Most common: FK constraints (e.g. users referenced by meeting_permissions.assigned_by).
+        raise HTTPException(status_code=409, detail=f"Delete failed: {exc.orig}") from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail=f"{db_name} unavailable: {exc}") from exc
 
     # Auto sync: delete -> propagate to other two DBs.
     try:

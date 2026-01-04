@@ -87,7 +87,7 @@ export default function MigrationPage() {
     <div className="stack">
       <div className="card">
         <h2>迁移</h2>
-        <div className="muted">需要先在“登录”页获取管理员 token（接口使用 JWT + RBAC）。</div>
+        <div className="muted">需要先在“登录”页获取管理员 token。</div>
 
         {error ? (
           <div className="error" style={{ marginTop: 10 }}>
@@ -100,7 +100,7 @@ export default function MigrationPage() {
             <span>模式</span>
             <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
               <option value="table">单表迁移</option>
-              <option value="database">整库迁移（业务表集合）</option>
+              <option value="database">整库迁移</option>
             </select>
           </label>
 
@@ -155,7 +155,6 @@ export default function MigrationPage() {
 
       <div className="card">
         <h2>备份</h2>
-        <div className="muted">在网页上触发三库备份（调用 `deploy/backup.ps1`），并显示备份目录。</div>
         <div className="row" style={{ marginTop: 12 }}>
           <button onClick={onBackup} disabled={backupBusy}>
             {backupBusy ? "备份中..." : "一键备份（MySQL+Postgres+Oracle）"}

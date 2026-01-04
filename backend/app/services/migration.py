@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -60,6 +61,12 @@ def _reflect_table(db_name: str, table_name: str) -> Table:
     return Table(physical, meta, autoload_with=client.engine, schema=schema)
 
 
+def _normalize_value_for_target(target_db: str, value: Any) -> Any:
+    if target_db == "oracle" and isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    return value
+
+
 def migrate_table(
     *,
     source_db: str,
@@ -74,6 +81,7 @@ def migrate_table(
 
     src_table = _reflect_table(source_db, table_name)
     dst_table = _reflect_table(target_db, table_name)
+    src_from = src_table.alias() if source_db == "oracle" else src_table
 
     started = time.perf_counter()
     rows_read = 0
@@ -86,7 +94,7 @@ def migrate_table(
         # Simple batch scan (OFFSET-based). Good enough for course-size datasets.
         offset = 0
         while True:
-            batch = src_conn.execute(select(src_table).offset(offset).limit(batch_size)).mappings().all()
+            batch = src_conn.execute(select(src_from).offset(offset).limit(batch_size)).mappings().all()
             if not batch:
                 break
             rows_read += len(batch)
@@ -99,7 +107,7 @@ def migrate_table(
                 for k, v in row.items():
                     dst_name = dst_cols_by_lower.get(str(k).lower())
                     if dst_name:
-                        mapped[dst_name] = v
+                        mapped[dst_name] = _normalize_value_for_target(target_db, v)
                 if mapped:
                     payload.append(mapped)
             if payload:

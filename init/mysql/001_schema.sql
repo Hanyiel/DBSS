@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS meeting_permissions (
     FOREIGN KEY (meeting_id) REFERENCES rooms(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES permission_roles(id),
-    FOREIGN KEY (assigned_by) REFERENCES users(id),
+    FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL,
     
     -- 唯一约束
     UNIQUE KEY unique_meeting_user (meeting_id, user_id),

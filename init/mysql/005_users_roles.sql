@@ -42,6 +42,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON `video_conference`.`room_participants` T
 GRANT SELECT, INSERT, UPDATE, DELETE ON `video_conference`.`messages` TO `dbss_role_rw`;
 GRANT SELECT, INSERT, UPDATE, DELETE ON `video_conference`.`waiting_room` TO `dbss_role_rw`;
 GRANT SELECT, INSERT, UPDATE, DELETE ON `video_conference`.`meeting_recordings` TO `dbss_role_rw`;
+-- Read-only stored functions used by query templates
+GRANT EXECUTE ON FUNCTION `video_conference`.`fn_room_score` TO `dbss_role_rw`;
 
 GRANT SELECT ON `video_conference`.`change_log` TO `dbss_role_rw`;
 GRANT SELECT ON `video_conference`.`audit_log` TO `dbss_role_rw`;
@@ -51,6 +53,7 @@ GRANT SELECT ON `video_conference`.`sync_stats_daily` TO `dbss_role_rw`;
 
 -- RO: read-only on database
 GRANT SELECT ON `video_conference`.* TO `dbss_role_ro`;
+GRANT EXECUTE ON FUNCTION `video_conference`.`fn_room_score` TO `dbss_role_ro`;
 
 -- Auditor: only read sync/audit tables
 GRANT SELECT ON `video_conference`.`change_log` TO `dbss_role_audit`;
@@ -60,4 +63,3 @@ GRANT SELECT ON `video_conference`.`sync_applied` TO `dbss_role_audit`;
 GRANT SELECT ON `video_conference`.`sync_stats_daily` TO `dbss_role_audit`;
 
 FLUSH PRIVILEGES;
-
